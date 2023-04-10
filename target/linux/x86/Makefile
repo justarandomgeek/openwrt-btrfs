@@ -8,7 +8,7 @@ ARCH:=i386
 BOARD:=x86
 BOARDNAME:=x86
 FEATURES:=squashfs ext4 vdi vmdk vhdx pcmcia targz fpu boot-part rootfs-part
-SUBTARGETS:=generic legacy geode 64
+SUBTARGETS:=generic legacy geode 64 btrfs
 
 KERNEL_PATCHVER:=5.15
 
