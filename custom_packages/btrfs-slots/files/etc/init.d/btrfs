@@ -1,0 +1,60 @@
+#!/bin/sh /etc/rc.common
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Copyright (C) 2013-2020 OpenWrt.org
+
+# just after fstab
+START=12
+
+boot() {
+    local i='0'
+    while uci -q get btrfs.@subvol[$i] > /dev/null; do
+        local label=`uci -q get btrfs.@subvol[$i].label`
+        local uuid=`uci -q get btrfs.@subvol[$i].uuid`
+        local device=''
+        if [ "$label" ]; then 
+            device="LABEL=$label"
+        elif [ "$uuid" ]; then 
+            device="UUID=$uuid"
+        fi
+
+        local subvol=`uci get btrfs.@subvol[$i].subvol`
+        local target=`uci get btrfs.@subvol[$i].target`
+        if [ -z "$device" ]; then
+            echo "missing device spec to mount $subvol in $target" > /dev/kmsg
+        elif [ -z "$subvol" ]; then
+            echo "missing subvol spec for $device in $target" > /dev/kmsg
+        elif [ -z "$target" ]; then
+            echo "missing target spec for $device subvol $subvol" > /dev/kmsg
+        else
+            mkdir -p $target
+            mount $device $target -osubvol=$subvol
+        fi
+        i=`expr $i + 1`
+    done
+
+    local CURRENT=`findmnt --mountpoint / -o FSROOT -n`
+    echo "btrfs_slots: booted from $CURRENT" > /dev/kmsg
+    if [ "$CURRENT" = "/@upgrade" ]; then
+        local PREVIOUS=`date +%Y%m%dT%H%M`
+        local PREV_LIST=`grub-editenv /efi/EFI/openwrt/grubenv list | grep ^previous_entries= | cut -d"=" -f2 | cut -d" " -f1-4`
+        echo "btrfs_slots: moving @openwrt to @previous.$PREVIOUS, @upgrade to @openwrt" > /dev/kmsg
+        mv /mnt/rootfs/@openwrt /mnt/rootfs/@previous.$PREVIOUS
+        mv /mnt/rootfs/@upgrade /mnt/rootfs/@openwrt
+        grub-editenv /efi/EFI/openwrt/grubenv set previous_entries="$PREVIOUS $PREV_LIST"
+        sync
+        echo "btrfs_slots: now running from /@openwrt" > /dev/kmsg
+    fi
+}
+
+start() {
+    return 0
+}
+
+restart() {
+    return 0
+}
+
+stop() {
+    return 0
+}
