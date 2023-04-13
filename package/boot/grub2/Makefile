@@ -147,6 +147,10 @@ define Package/grub2/install
 		biosdisk boot chain configfile ext2 linux ls part_msdos reboot search serial vga
 endef
 
+define Package/grub2-efi/config
+	source "$(SOURCE)/Config-efi.in"
+endef
+
 define Package/grub2-efi/install
 	sed 's#msdos1#gpt1#g' ./files/grub-early.cfg >$(PKG_BUILD_DIR)/grub-early.cfg
 	$(STAGING_DIR_HOST)/bin/grub-mkimage \
@@ -155,14 +159,16 @@ define Package/grub2-efi/install
 		-O $(CONFIG_ARCH)-efi \
 		-c $(PKG_BUILD_DIR)/grub-early.cfg \
 		-o $(STAGING_DIR_IMAGE)/grub2/boot$(if $(CONFIG_x86_64),x64,ia32).efi \
-		at_keyboard boot chain configfile fat linux ls part_gpt reboot serial test efi_gop efi_uga
+		at_keyboard boot chain configfile fat linux ls part_gpt reboot serial test efi_gop efi_uga \
+		$(call qstrip,$(CONFIG_GRUB2_EFI_EXTRA_MODULES))
 	$(STAGING_DIR_HOST)/bin/grub-mkimage \
 		-d $(PKG_BUILD_DIR)/grub-core \
 		-p /boot/grub \
 		-O $(CONFIG_ARCH)-efi \
 		-c ./files/grub-early.cfg \
 		-o $(STAGING_DIR_IMAGE)/grub2/iso-boot$(if $(CONFIG_x86_64),x64,ia32).efi \
-		at_keyboard boot chain configfile fat iso9660 linux ls part_msdos part_gpt reboot serial test efi_gop efi_uga
+		at_keyboard boot chain configfile fat iso9660 linux ls part_msdos part_gpt reboot serial test efi_gop efi_uga \
+		$(call qstrip,$(CONFIG_GRUB2_EFI_EXTRA_MODULES))
 endef
 
 define Package/grub2-editenv/install
