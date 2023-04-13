@@ -1,4 +1,0 @@
-config subvol
-	option target '/mnt/rootfs'
-	option label 'rootfs'
-	option subvol	'/'

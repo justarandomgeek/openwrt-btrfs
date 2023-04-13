@@ -16,7 +16,7 @@ define Package/$(PKG_NAME)
   CATEGORY:=Utilities
   TITLE:=BTRFS Subvol mounting and upgrade utils
   URL:=https://github.com/justarandomgeek/
-  DEPENDS+= +btrfs-progs +grub2-editenv +mount-utils
+  DEPENDS+= +btrfs-progs +grub2-editenv +grub2-efi +mount-utils
 endef
 
 define Build/Compile
@@ -33,6 +33,9 @@ define Package/$(PKG_NAME)/install
 	$(CP) files/etc/init.d/btrfs $(1)/etc/init.d/
 	$(INSTALL_DIR) $(1)/etc/rc.d
 	$(CP) files/etc/rc.d/S12btrfs $(1)/etc/rc.d/
+	$(INSTALL_DIR) $(1)/etc/uci-defaults
+	$(CP) files/etc/uci-defaults/09-btrfs $(1)/etc/uci-defaults/
+	$(CP) files/etc/uci-defaults/09-fstab $(1)/etc/uci-defaults/
 	$(INSTALL_DIR) $(1)/sbin
 	$(CP) files/sbin/btrfs-upgrade $(1)/sbin/
 endef
