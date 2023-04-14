@@ -7,15 +7,15 @@ if [ `findmnt --mountpoint / -o FSROOT -n` != "/@openwrt" ]; then
     exit 1
 fi
 
-if [ ! -f /tmp/openwrt-x86-64-generic-rootfs-kernel.tar.gz ]; then
-    echo "No file /tmp/openwrt-x86-64-generic-rootfs-kernel.tar.gz"
+if [ ! -f /tmp/openwrt-x86-64-generic-rootfs.tar.gz ]; then
+    echo "No file /tmp/openwrt-x86-64-generic-rootfs.tar.gz"
     exit 1
 fi
 
 # remove any pre-existing @upgrade from prior failed upgrades
 [ -d /mnt/rootfs/@upgrade ] && btrfs subvolume delete /mnt/rootfs/@upgrade
 btrfs subvolume create /mnt/rootfs/@upgrade
-tar -xzf /tmp/openwrt-x86-64-generic-rootfs-kernel.tar.gz -C /mnt/rootfs/@upgrade
+tar -xzf /tmp/openwrt-x86-64-generic-rootfs.tar.gz -C /mnt/rootfs/@upgrade
 #TODO: snapshot here as "reset to factory"?
 
 # copy preserved files
