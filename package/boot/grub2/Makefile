@@ -165,6 +165,14 @@ define Package/grub2-efi/install
 		-d $(PKG_BUILD_DIR)/grub-core \
 		-p /boot/grub \
 		-O $(CONFIG_ARCH)-efi \
+		-c ./files/grub-early-cmdpath.cfg \
+		-o $(STAGING_DIR_IMAGE)/grub2/grub$(if $(CONFIG_x86_64),x64,ia32).efi \
+		at_keyboard boot chain configfile fat linux ls part_gpt reboot serial test efi_gop efi_uga \
+		$(call qstrip,$(CONFIG_GRUB2_EFI_EXTRA_MODULES))
+	$(STAGING_DIR_HOST)/bin/grub-mkimage \
+		-d $(PKG_BUILD_DIR)/grub-core \
+		-p /boot/grub \
+		-O $(CONFIG_ARCH)-efi \
 		-c ./files/grub-early.cfg \
 		-o $(STAGING_DIR_IMAGE)/grub2/iso-boot$(if $(CONFIG_x86_64),x64,ia32).efi \
 		at_keyboard boot chain configfile fat iso9660 linux ls part_msdos part_gpt reboot serial test efi_gop efi_uga \

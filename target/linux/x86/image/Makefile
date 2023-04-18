@@ -60,9 +60,16 @@ define Build/combined
 		256
 endef
 
+define Build/efi
+	$(INSTALL_DIR) $@.boot/efi/openwrt
+	$(CP) $(STAGING_DIR_IMAGE)/grub2/grub$(if $(CONFIG_x86_64),x64,ia32).efi $@.boot/efi/openwrt/
+	
+	$(SCRIPT_DIR)/gen_image_noroot.sh $@ $(CONFIG_TARGET_KERNEL_PARTSIZE) $@.boot
+endef
+
 define Build/grub-config
 	rm -fR $@.boot
-	$(INSTALL_DIR) $@.boot/boot/grub
+	$(INSTALL_DIR) $@.boot/$(if $(filter $(1),slots),efi/openwrt,boot/grub)
 	sed \
 		-e 's#@SERIAL_CONFIG@#$(strip $(GRUB_SERIAL_CONFIG))#g' \
 		-e 's#@TERMINAL_CONFIG@#$(strip $(GRUB_TERMINAL_CONFIG))#g' \
@@ -71,7 +78,7 @@ define Build/grub-config
 		-e 's#@CMDLINE@#$(BOOTOPTS) $(GRUB_CONSOLE_CMDLINE)#g' \
 		-e 's#@TIMEOUT@#$(GRUB_TIMEOUT)#g' \
 		-e 's#@TITLE@#$(GRUB_TITLE)#g' \
-		./grub-$(1).cfg > $@.boot/boot/grub/grub.cfg
+		./grub-$(1).cfg > $@.boot/$(if $(filter $(1),slots),efi/openwrt,boot/grub)/grub.cfg
 endef
 
 define Build/grub-install
@@ -117,6 +124,8 @@ define Device/Default
   IMAGE/rootfs.img := append-rootfs | pad-to $(ROOTFS_PARTSIZE)
   IMAGE/rootfs.img.gz := append-rootfs | pad-to $(ROOTFS_PARTSIZE) | gzip
   ARTIFACT/image-efi.iso := grub-config iso | iso efi
+  ARTIFACT/slots-efi.img := grub-config slots | efi slots | append-metadata
+  ARTIFACT/slots-efi.img.gz := grub-config slots | efi slots | gzip | append-metadata
   IMAGE/combined-efi.img := grub-config efi | combined efi | grub-install efi | append-metadata
   IMAGE/combined-efi.img.gz := grub-config efi | combined efi | grub-install efi | gzip | append-metadata
   IMAGE/combined-efi.vdi := grub-config efi | combined efi | grub-install efi | qemu-image vdi
@@ -126,10 +135,12 @@ define Device/Default
     IMAGES-y := rootfs.img.gz
     IMAGES-$$(CONFIG_GRUB_IMAGES) += combined.img.gz
     IMAGES-$$(CONFIG_GRUB_EFI_IMAGES) += combined-efi.img.gz
+    ARTIFACTS-$$(CONFIG_TARGET_SLOTS_EFI) += slots-efi.img.gz
   else
     IMAGES-y := rootfs.img
     IMAGES-$$(CONFIG_GRUB_IMAGES) += combined.img
     IMAGES-$$(CONFIG_GRUB_EFI_IMAGES) += combined-efi.img
+    ARTIFACTS-$$(CONFIG_TARGET_SLOTS_EFI) += slots-efi.img
   endif
   KERNEL := kernel-bin
   KERNEL_INSTALL := 1
