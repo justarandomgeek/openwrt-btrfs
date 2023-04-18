@@ -1,0 +1,63 @@
+#!/bin/sh
+
+#TODO:
+# btrfs-slots install [--reboot] [--set-default] [--id=tag] rootfs.tgz
+#   Create a new slot, and optionally reboot to it immediately (and set default if successful)
+# btrfs-slots reboot [--set-default] tag
+#   Reboot to a specified slot, and optionally set it as default if successful
+# btrfs-slots status
+#   Report currently-booted and current default. Return non-zero if they don't match.
+# btrfs-slots set-default
+#   Set the currently booted slot as default
+# btrfs-slots delete tag
+#   Delete a specified slot
+# btrfs-slots prune
+#   Delete slots past grubenv limit
+# btrfs-slots list [--sync]
+#   List available slots
+#
+#
+# slots in subvols @openwrt.tag
+# and @openwrt.tag-factory
+# default slot is symlink @openwrt -> @openwrt.tag
+# grubenv next_slot=tag for auto one-shot boot
+# @slot/set_default flag file to indicate a slot should become default once succesfully booted
+# grubenv slots=tag tag tag tag...
+# limit to 10 slots listed to keep from filling grubenv (1024b total)
+
+# assumes /mnt/rootfs and /efi are already mounted
+
+function install() {
+    # $1=path to new slot rootfs.tar.gz
+    id=`date +%Y%m%dT%H%M`
+    btrfs subvolume create /mnt/rootfs/@openwrt.$id
+    tar -xzf $1 -C /mnt/rootfs/@openwrt.$id
+    btrfs subvolume snapshot -r /mnt/rootfs/@openwrt.$id /mnt/rootfs/@openwrt.$id.factory
+    # copy preserved files
+    #TODO: sysupgrade unpack by 80_mount_root would also keep any new lines from /etc/passwd /etc/group /etc/shadow
+    for f in `sysupgrade -l`; do
+        mkdir -p /mnt/rootfs/@openwrt.$id/`dirname $f`
+        cp -P /mnt/rootfs/@openwrt/$f /mnt/rootfs/@openwrt.$id/$f
+    done
+    local oldslots=`grub-editenv /efi/EFI/openwrt/grubenv list | grep ^slots= | cut -d"=" -f2 | cut -d" " -f1-9`
+    grub-editenv /efi/EFI/openwrt/grubenv set slots="$id $oldslots"
+}
+
+function reboot() {
+    # $1=id
+    grub-editenv /efi/EFI/openwrt/grubenv set next_slot="$1"
+    [ $reboot_set_default ] && touch /mnt/rootfs/@openwrt.$1/set_default
+    reboot
+}
+
+function status() {
+    local current=`findmnt --mountpoint / -o FSROOT -n`
+    local default=`readlink /mnt/rootfs/@openwrt`
+
+}
+
+function set_default() {
+    local current=`findmnt --mountpoint / -o FSROOT -n`
+    ln -sf $current /mnt/rootfs/@openwrt
+    rm /set_default
+}

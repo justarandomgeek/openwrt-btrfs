@@ -38,6 +38,7 @@ define Package/$(PKG_NAME)/install
 	$(CP) files/etc/uci-defaults/09-fstab $(1)/etc/uci-defaults/
 	$(INSTALL_DIR) $(1)/sbin
 	$(CP) files/sbin/btrfs-upgrade $(1)/sbin/
+	$(CP) files/sbin/btrfs-slots $(1)/sbin/
 endef
 
 $(eval $(call BuildPackage,$(PKG_NAME)))
