@@ -1,21 +1,13 @@
 #!/bin/sh
 
 #TODO:
-# btrfs-slots install [--reboot] [--set-default] [--id=tag] rootfs.tgz
-#   Create a new slot, and optionally reboot to it immediately (and set default if successful)
-# btrfs-slots reboot [--set-default] tag
-#   Reboot to a specified slot, and optionally set it as default if successful
-# btrfs-slots status
-#   Report currently-booted and current default. Return non-zero if they don't match.
-# btrfs-slots set-default
-#   Set the currently booted slot as default
-# btrfs-slots delete tag
-#   Delete a specified slot
-# btrfs-slots prune
-#   Delete slots past grubenv limit
-# btrfs-slots list [--sync]
-#   List available slots
-#
+#  --install rootfs.tgz
+#  --id tag
+#  --reboot
+#  --set-default
+#  --status
+#  --list 
+#  --prune
 #
 # slots in subvols @openwrt.tag
 # and @openwrt.tag-factory
@@ -53,7 +45,15 @@ function reboot() {
 function status() {
     local current=`findmnt --mountpoint / -o FSROOT -n`
     local default=`readlink /mnt/rootfs/@openwrt`
+    #TODO: check grubenv exists
+    #TODO: show grubenv next_slot if set
+    #TODO: check grubenv slots not empty
 
+    #return 
+    # 0 - all ok
+    # 1 - current != default
+    # 2 - grubenv missing
+    # 4 - grubenv no slots
 }
 
 function set_default() {
