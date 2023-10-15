@@ -463,6 +463,35 @@ endef
 
 $(eval $(call KernelPackage,crypto-hw-talitos))
 
+define KernelPackage/crypto-hw-eip93
+  TITLE:=MTK EIP93 crypto module
+  DEPENDS:=@TARGET_ramips_mt7621 \
+	+kmod-crypto-authenc \
+	+kmod-crypto-des \
+	+kmod-crypto-md5 \
+	+kmod-crypto-sha1 \
+	+kmod-crypto-sha256
+  KCONFIG:= \
+	CONFIG_CRYPTO_HW=y \
+	CONFIG_CRYPTO_DEV_EIP93 \
+	CONFIG_CRYPTO_DEV_EIP93_AES=y \
+	CONFIG_CRYPTO_DEV_EIP93_DES=y \
+	CONFIG_CRYPTO_DEV_EIP93_AEAD=y \
+	CONFIG_CRYPTO_DEV_EIP93_GENERIC_SW_MAX_LEN=256 \
+	CONFIG_CRYPTO_DEV_EIP93_AES_128_SW_MAX_LEN=512
+  FILES:=$(LINUX_DIR)/drivers/crypto/mtk-eip93/crypto-hw-eip93.ko
+  AUTOLOAD:=$(call AutoLoad,09,crypto-hw-eip93)
+  $(call AddDepends/crypto)
+endef
+
+define KernelPackage/crypto-hw-eip93/description
+Kernel module to enable EIP-93 Crypto engine as found
+in the Mediatek MT7621 SoC.
+It enables DES/3DES/AES ECB/CBC/CTR and
+IPSEC offload with authenc(hmac(sha1/sha256), aes/cbc/rfc3686)
+endef
+
+$(eval $(call KernelPackage,crypto-hw-eip93))
 
 define KernelPackage/crypto-kpp
   TITLE:=Key-agreement Protocol Primitives
@@ -704,7 +733,6 @@ define KernelPackage/crypto-misc
 	CONFIG_CRYPTO_KHAZAD \
 	CONFIG_CRYPTO_SERPENT \
 	CONFIG_CRYPTO_TEA \
-	CONFIG_CRYPTO_TGR192@lt5.12 \
 	CONFIG_CRYPTO_TWOFISH \
 	CONFIG_CRYPTO_TWOFISH_COMMON \
 	CONFIG_CRYPTO_TWOFISH_586 \
@@ -717,7 +745,6 @@ define KernelPackage/crypto-misc
 	$(LINUX_DIR)/crypto/cast6_generic.ko \
 	$(LINUX_DIR)/crypto/khazad.ko \
 	$(LINUX_DIR)/crypto/tea.ko \
-	$(LINUX_DIR)/crypto/tgr192.ko@lt5.12 \
 	$(LINUX_DIR)/crypto/twofish_common.ko \
 	$(LINUX_DIR)/crypto/wp512.ko \
 	$(LINUX_DIR)/crypto/twofish_generic.ko \
@@ -725,7 +752,7 @@ define KernelPackage/crypto-misc
 	$(LINUX_DIR)/crypto/blowfish_generic.ko \
 	$(LINUX_DIR)/crypto/serpent_generic.ko
   AUTOLOAD:=$(call AutoLoad,10,anubis camellia_generic cast_common \
-	cast5_generic cast6_generic khazad tea tgr192@lt5.12 twofish_common \
+	cast5_generic cast6_generic khazad tea twofish_common \
 	wp512 blowfish_common serpent_generic)
   ifndef CONFIG_TARGET_x86
 	AUTOLOAD+= $(call AutoLoad,10,twofish_generic blowfish_generic)
@@ -738,10 +765,9 @@ ifndef CONFIG_TARGET_x86_64
     FILES+= \
 	$(LINUX_DIR)/arch/x86/crypto/twofish-i586.ko \
 	$(LINUX_DIR)/arch/x86/crypto/serpent-sse2-i586.ko \
-	$(LINUX_DIR)/arch/x86/crypto/glue_helper.ko@lt5.12 \
 	$(LINUX_DIR)/crypto/cryptd.ko \
 	$(LINUX_DIR)/crypto/crypto_simd.ko
-    AUTOLOAD+= $(call AutoLoad,10,cryptd glue_helper@lt5.12 \
+    AUTOLOAD+= $(call AutoLoad,10,cryptd \
 	serpent-sse2-i586 twofish-i586 blowfish_generic)
   endef
 endif
@@ -827,7 +853,7 @@ $(eval $(call KernelPackage,crypto-rmd160))
 
 define KernelPackage/crypto-rng
   TITLE:=CryptoAPI random number generation
-  DEPENDS:=+kmod-crypto-hash +kmod-crypto-hmac +kmod-crypto-sha256
+  DEPENDS:=+kmod-crypto-hash +kmod-crypto-hmac +kmod-crypto-sha512
   KCONFIG:= \
 	CONFIG_CRYPTO_DRBG \
 	CONFIG_CRYPTO_DRBG_HMAC=y \
@@ -900,10 +926,12 @@ define KernelPackage/crypto-sha1/mpc85xx
   AUTOLOAD+=$(call AutoLoad,09,sha1-ppc-spe)
 endef
 
+ifndef CONFIG_TARGET_uml
 define KernelPackage/crypto-sha1/x86_64
   FILES+=$(LINUX_DIR)/arch/x86/crypto/sha1-ssse3.ko
   AUTOLOAD+=$(call AutoLoad,09,sha1-ssse3)
 endef
+endif
 
 ifdef KernelPackage/crypto-sha1/$(ARCH)
   KernelPackage/crypto-sha1/$(CRYPTO_TARGET)=\
@@ -938,10 +966,12 @@ define KernelPackage/crypto-sha256/mpc85xx
   AUTOLOAD+=$(call AutoLoad,09,sha256-ppc-spe)
 endef
 
+ifndef CONFIG_TARGET_uml
 define KernelPackage/crypto-sha256/x86_64
   FILES+=$(LINUX_DIR)/arch/x86/crypto/sha256-ssse3.ko
   AUTOLOAD+=$(call AutoLoad,09,sha256-ssse3)
 endef
+endif
 
 ifdef KernelPackage/crypto-sha256/$(ARCH)
   KernelPackage/crypto-sha256/$(CRYPTO_TARGET)=\
@@ -980,10 +1010,12 @@ endef
 
 KernelPackage/crypto-sha512/tegra=$(KernelPackage/crypto-sha512/arm)
 
+ifndef CONFIG_TARGET_uml
 define KernelPackage/crypto-sha512/x86_64
   FILES+=$(LINUX_DIR)/arch/x86/crypto/sha512-ssse3.ko
   AUTOLOAD+=$(call AutoLoad,09,sha512-ssse3)
 endef
+endif
 
 ifdef KernelPackage/crypto-sha512/$(ARCH)
   KernelPackage/crypto-sha512/$(CRYPTO_TARGET)=\

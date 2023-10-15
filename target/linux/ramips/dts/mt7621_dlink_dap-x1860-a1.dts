@@ -15,9 +15,9 @@
 
 	aliases {
 		label-mac-device = &gmac0;
-		led-boot = &led_power_orange;
+		led-boot = &led_power_green;
 		led-failsafe = &led_power_red;
-		led-running = &led_power_orange;
+		led-running = &led_power_green;
 		led-upgrade = &led_power_red;
 	};
 
@@ -40,15 +40,20 @@
 	leds {
 		compatible = "gpio-leds";
 
+		led_power_green: power_green {
+			label = "green:power";
+			gpios = <&gpio 3 GPIO_ACTIVE_LOW>;
+			default-state = "on";
+		};
+
 		led_power_red: power_red {
 			label = "red:power";
 			gpios = <&gpio 7 GPIO_ACTIVE_LOW>;
 		};
 
-		led_power_orange: power_orange {
+		power_orange {
 			label = "orange:power";
 			gpios = <&gpio 8 GPIO_ACTIVE_LOW>;
-			default-state = "on";
 		};
 
 		rssihigh {
@@ -120,13 +125,16 @@
 		};
 
 		factory: partition@100000 {
+			compatible = "nvmem-cells";
 			label = "factory";
 			reg = <0x100000 0x80000>;
-			read-only;
-
-			compatible = "nvmem-cells";
 			#address-cells = <1>;
 			#size-cells = <1>;
+			read-only;
+
+			eeprom_factory_0: eeprom@0 {
+				reg = <0x0 0xe00>;
+			};
 
 			macaddr_factory_4: macaddr@4 {
 				reg = <0x4 0x6>;
@@ -170,7 +178,8 @@
 	wifi@0,0 {
 		compatible = "mediatek,mt76";
 		reg = <0x0000 0 0 0 0>;
-		mediatek,mtd-eeprom = <&factory 0x0>;
+		nvmem-cells = <&eeprom_factory_0>;
+		nvmem-cell-names = "eeprom";
 		mediatek,disable-radar-background;
 	};
 };

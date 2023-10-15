@@ -11,10 +11,6 @@
 		led-failsafe = &led_power_red;
 		led-running = &led_power_red;
 		led-upgrade = &led_power_red;
-
-		led-internet = &led_internet_green;
-		led-usb = &led_modem_green;
-		led-wireless = &led_wireless_green;
 	};
 
 	i2c {
@@ -27,7 +23,7 @@
 
 	keys {
 		compatible = "gpio-keys-polled";
-		poll-interval = <20>;
+		poll-interval = <100>;
 
 		wps {
 			label = "wps";
@@ -42,6 +38,19 @@
 			linux,code = <KEY_RESTART>;
 			debounce-interval = <60>;
 		};
+	};
+
+	bcm4360-sprom {
+		compatible = "brcm,bcma-sprom";
+
+		pci-bus = <1>;
+		pci-dev = <0>;
+
+		nvmem-cells = <&macaddr_cferom_6a0>;
+		nvmem-cell-names = "mac-address";
+		mac-address-increment = <1>;
+
+		brcm,sprom = "brcm/bcm4360-sprom.bin";
 	};
 };
 
@@ -69,7 +78,7 @@
 			label = "red:modem";
 		};
 
-		led_modem_green: led@2 {
+		led@2 {
 			reg = <2>;
 			label = "green:modem";
 		};
@@ -94,7 +103,7 @@
 			label = "green:phone";
 		};
 
-		led_wireless_green: led@7 {
+		led@7 {
 			reg = <7>;
 			label = "green:wifi";
 		};
@@ -104,7 +113,7 @@
 			label = "red:power";
 		};
 
-		led_internet_green: led@9 {
+		led@9 {
 			reg = <9>;
 			label = "green:internet";
 		};

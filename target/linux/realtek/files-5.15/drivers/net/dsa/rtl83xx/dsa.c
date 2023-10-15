@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include <net/dsa.h>
+#include <linux/etherdevice.h>
 #include <linux/if_bridge.h>
 #include <asm/mach-rtl838x/mach-rtl83xx.h>
 
@@ -151,7 +152,7 @@ static void rtl83xx_vlan_setup(struct rtl838x_switch_priv *priv)
 static void rtl83xx_setup_bpdu_traps(struct rtl838x_switch_priv *priv)
 {
 	for (int i = 0; i < priv->cpu_port; i++)
-		priv->r->set_receive_management_action(i, BPDU, COPY2CPU);
+		priv->r->set_receive_management_action(i, BPDU, TRAP2CPU);
 }
 
 static void rtl83xx_port_set_salrn(struct rtl838x_switch_priv *priv,
@@ -167,7 +168,6 @@ static void rtl83xx_port_set_salrn(struct rtl838x_switch_priv *priv,
 static int rtl83xx_setup(struct dsa_switch *ds)
 {
 	struct rtl838x_switch_priv *priv = ds->priv;
-	u64 port_bitmap = BIT_ULL(priv->cpu_port);
 
 	pr_debug("%s called\n", __func__);
 
@@ -178,18 +178,24 @@ static int rtl83xx_setup(struct dsa_switch *ds)
 		priv->ports[i].enable = false;
 	priv->ports[priv->cpu_port].enable = true;
 
-	/* Isolate ports from each other: traffic only CPU <-> port */
-	/* Setting bit j in register RTL838X_PORT_ISO_CTRL(i) allows
-	 * traffic from source port i to destination port j
+	/* Configure ports so they are disabled by default, but once enabled
+	 * they will work in isolated mode (only traffic between port and CPU).
 	 */
 	for (int i = 0; i < priv->cpu_port; i++) {
 		if (priv->ports[i].phy) {
-			priv->r->set_port_reg_be(BIT_ULL(priv->cpu_port) | BIT_ULL(i),
-					      priv->r->port_iso_ctrl(i));
-			port_bitmap |= BIT_ULL(i);
+			priv->ports[i].pm = BIT_ULL(priv->cpu_port);
+			priv->r->traffic_set(i, BIT_ULL(i));
 		}
 	}
-	priv->r->set_port_reg_be(port_bitmap, priv->r->port_iso_ctrl(priv->cpu_port));
+	priv->r->traffic_set(priv->cpu_port, BIT_ULL(priv->cpu_port));
+
+	/* For standalone ports, forward packets even if a static fdb
+	 * entry for the source address exists on another port.
+	 */
+	if (priv->r->set_static_move_action) {
+		for (int i = 0; i <= priv->cpu_port; i++)
+			priv->r->set_static_move_action(i, true);
+	}
 
 	if (priv->family_id == RTL8380_FAMILY_ID)
 		rtl838x_print_matrix();
@@ -229,7 +235,6 @@ static int rtl83xx_setup(struct dsa_switch *ds)
 static int rtl93xx_setup(struct dsa_switch *ds)
 {
 	struct rtl838x_switch_priv *priv = ds->priv;
-	u32 port_bitmap = BIT(priv->cpu_port);
 
 	pr_info("%s called\n", __func__);
 
@@ -247,13 +252,16 @@ static int rtl93xx_setup(struct dsa_switch *ds)
 		priv->ports[i].enable = false;
 	priv->ports[priv->cpu_port].enable = true;
 
+	/* Configure ports so they are disabled by default, but once enabled
+	 * they will work in isolated mode (only traffic between port and CPU).
+	 */
 	for (int i = 0; i < priv->cpu_port; i++) {
 		if (priv->ports[i].phy) {
-			priv->r->traffic_set(i, BIT_ULL(priv->cpu_port) | BIT_ULL(i));
-			port_bitmap |= BIT_ULL(i);
+			priv->ports[i].pm = BIT_ULL(priv->cpu_port);
+			priv->r->traffic_set(i, BIT_ULL(i));
 		}
 	}
-	priv->r->traffic_set(priv->cpu_port, port_bitmap);
+	priv->r->traffic_set(priv->cpu_port, BIT_ULL(priv->cpu_port));
 
 	rtl930x_print_matrix();
 
@@ -421,8 +429,11 @@ static void rtl93xx_phylink_validate(struct dsa_switch *ds, int port,
 		phylink_set(mask, 10000baseCR_Full);
 	}
 
-	if (state->interface == PHY_INTERFACE_MODE_USXGMII)
+	if (state->interface == PHY_INTERFACE_MODE_USXGMII) {
+		phylink_set(mask, 2500baseT_Full);
+		phylink_set(mask, 5000baseT_Full);
 		phylink_set(mask, 10000baseT_Full);
+	}
 
 	phylink_set(mask, 10baseT_Half);
 	phylink_set(mask, 10baseT_Full);
@@ -551,7 +562,7 @@ static int rtl93xx_phylink_mac_link_state(struct dsa_switch *ds, int port,
 	}
 
 	if (priv->family_id == RTL9310_FAMILY_ID
-		&& (port >= 52 || port <= 55)) { /* Internal serdes */
+		&& (port >= 52 && port <= 55)) { /* Internal serdes */
 			state->speed = SPEED_10000;
 			state->link = 1;
 			state->duplex = 1;
@@ -968,14 +979,8 @@ static int rtl83xx_mc_group_alloc(struct rtl838x_switch_priv *priv, int port)
 	if (mc_group >= MAX_MC_GROUPS - 1)
 		return -1;
 
-	if (priv->is_lagmember[port]) {
-		pr_info("%s: %d is lag slave. ignore\n", __func__, port);
-		return 0;
-	}
-
 	set_bit(mc_group, priv->mc_group_bm);
-	mc_group++;  /* We cannot use group 0, as this is used for lookup miss flooding */
-	portmask = BIT_ULL(port) | BIT_ULL(priv->cpu_port);
+	portmask = BIT_ULL(port);
 	priv->r->write_mcast_pmask(mc_group, portmask);
 
 	return mc_group;
@@ -986,10 +991,7 @@ static u64 rtl83xx_mc_group_add_port(struct rtl838x_switch_priv *priv, int mc_gr
 	u64 portmask = priv->r->read_mcast_pmask(mc_group);
 
 	pr_debug("%s: %d\n", __func__, port);
-	if (priv->is_lagmember[port]) {
-		pr_info("%s: %d is lag slave. ignore\n", __func__, port);
-		return portmask;
-	}
+
 	portmask |= BIT_ULL(port);
 	priv->r->write_mcast_pmask(mc_group, portmask);
 
@@ -1001,39 +1003,13 @@ static u64 rtl83xx_mc_group_del_port(struct rtl838x_switch_priv *priv, int mc_gr
 	u64 portmask = priv->r->read_mcast_pmask(mc_group);
 
 	pr_debug("%s: %d\n", __func__, port);
-	if (priv->is_lagmember[port]) {
-		pr_info("%s: %d is lag slave. ignore\n", __func__, port);
-		return portmask;
-	}
+
+	portmask &= ~BIT_ULL(port);
 	priv->r->write_mcast_pmask(mc_group, portmask);
-	if (portmask == BIT_ULL(priv->cpu_port)) {
-		portmask &= ~BIT_ULL(priv->cpu_port);
-		priv->r->write_mcast_pmask(mc_group, portmask);
+	if (!portmask)
 		clear_bit(mc_group, priv->mc_group_bm);
-	}
 
 	return portmask;
-}
-
-static void store_mcgroups(struct rtl838x_switch_priv *priv, int port)
-{
-	for (int mc_group = 0; mc_group < MAX_MC_GROUPS; mc_group++) {
-		u64 portmask = priv->r->read_mcast_pmask(mc_group);
-		if (portmask & BIT_ULL(port)) {
-			priv->mc_group_saves[mc_group] = port;
-			rtl83xx_mc_group_del_port(priv, mc_group, port);
-		}
-	}
-}
-
-static void load_mcgroups(struct rtl838x_switch_priv *priv, int port)
-{
-	for (int mc_group = 0; mc_group < MAX_MC_GROUPS; mc_group++) {
-		if (priv->mc_group_saves[mc_group] == port) {
-			rtl83xx_mc_group_add_port(priv, mc_group, port);
-			priv->mc_group_saves[mc_group] = -1;
-		}
-	}
 }
 
 static int rtl83xx_port_enable(struct dsa_switch *ds, int port,
@@ -1053,8 +1029,6 @@ static int rtl83xx_port_enable(struct dsa_switch *ds, int port,
 
 	/* add port to switch mask of CPU_PORT */
 	priv->r->traffic_enable(priv->cpu_port, port);
-
-	load_mcgroups(priv, port);
 
 	if (priv->is_lagmember[port]) {
 		pr_debug("%s: %d is lag slave. ignore\n", __func__, port);
@@ -1091,7 +1065,6 @@ static void rtl83xx_port_disable(struct dsa_switch *ds, int port)
 	/* BUG: This does not work on RTL931X */
 	/* remove port from switch mask of CPU_PORT */
 	priv->r->traffic_disable(priv->cpu_port, port);
-	store_mcgroups(priv, port);
 
 	/* remove all other ports in the same bridge from switch mask of port */
 	v = priv->r->traffic_get(port);
@@ -1193,7 +1166,6 @@ static int rtl83xx_port_bridge_join(struct dsa_switch *ds, int port,
 			port_bitmap |= BIT_ULL(i);
 		}
 	}
-	load_mcgroups(priv, port);
 
 	/* Add all other ports to this port matrix. */
 	if (priv->ports[port].enable) {
@@ -1203,6 +1175,10 @@ static int rtl83xx_port_bridge_join(struct dsa_switch *ds, int port,
 		priv->r->traffic_set(port, v);
 	}
 	priv->ports[port].pm |= port_bitmap;
+
+	if (priv->r->set_static_move_action)
+		priv->r->set_static_move_action(port, false);
+
 	mutex_unlock(&priv->reg_mutex);
 
 	return 0;
@@ -1212,7 +1188,7 @@ static void rtl83xx_port_bridge_leave(struct dsa_switch *ds, int port,
 					struct net_device *bridge)
 {
 	struct rtl838x_switch_priv *priv = ds->priv;
-	u64 port_bitmap = BIT_ULL(priv->cpu_port), v;
+	u64 port_bitmap = 0, v;
 
 	pr_debug("%s %x: %d", __func__, (u32)priv, port);
 	mutex_lock(&priv->reg_mutex);
@@ -1229,19 +1205,21 @@ static void rtl83xx_port_bridge_leave(struct dsa_switch *ds, int port,
 			if (priv->ports[i].enable)
 				priv->r->traffic_disable(i, port);
 
-			priv->ports[i].pm |= BIT_ULL(port);
-			port_bitmap &= ~BIT_ULL(i);
+			priv->ports[i].pm &= ~BIT_ULL(port);
+			port_bitmap |= BIT_ULL(i);
 		}
 	}
-	store_mcgroups(priv, port);
 
-	/* Add all other ports to this port matrix. */
+	/* Remove all other ports from this port matrix. */
 	if (priv->ports[port].enable) {
 		v = priv->r->traffic_get(port);
-		v |= port_bitmap;
+		v &= ~port_bitmap;
 		priv->r->traffic_set(port, v);
 	}
 	priv->ports[port].pm &= ~port_bitmap;
+
+	if (priv->r->set_static_move_action)
+		priv->r->set_static_move_action(port, true);
 
 	mutex_unlock(&priv->reg_mutex);
 }
@@ -1420,6 +1398,20 @@ static int rtl83xx_vlan_prepare(struct dsa_switch *ds, int port,
 	return 0;
 }
 
+static void rtl83xx_vlan_set_pvid(struct rtl838x_switch_priv *priv,
+				  int port, int pvid)
+{
+	/* Set both inner and outer PVID of the port */
+	priv->r->vlan_port_pvid_set(port, PBVLAN_TYPE_INNER, pvid);
+	priv->r->vlan_port_pvid_set(port, PBVLAN_TYPE_OUTER, pvid);
+	priv->r->vlan_port_pvidmode_set(port, PBVLAN_TYPE_INNER,
+					PBVLAN_MODE_UNTAG_AND_PRITAG);
+	priv->r->vlan_port_pvidmode_set(port, PBVLAN_TYPE_OUTER,
+					PBVLAN_MODE_UNTAG_AND_PRITAG);
+
+	priv->ports[port].pvid = pvid;
+}
+
 static int rtl83xx_vlan_add(struct dsa_switch *ds, int port,
 			    const struct switchdev_obj_port_vlan *vlan,
 			    struct netlink_ext_ack *extack)
@@ -1442,17 +1434,10 @@ static int rtl83xx_vlan_add(struct dsa_switch *ds, int port,
 
 	mutex_lock(&priv->reg_mutex);
 
-	if (vlan->flags & BRIDGE_VLAN_INFO_PVID && vlan->vid) {
-		/* Set both inner and outer PVID of the port */
-		priv->r->vlan_port_pvid_set(port, PBVLAN_TYPE_INNER, vlan->vid);
-		priv->r->vlan_port_pvid_set(port, PBVLAN_TYPE_OUTER, vlan->vid);
-		priv->r->vlan_port_pvidmode_set(port, PBVLAN_TYPE_INNER,
-		                                PBVLAN_MODE_UNTAG_AND_PRITAG);
-		priv->r->vlan_port_pvidmode_set(port, PBVLAN_TYPE_OUTER,
-		                                PBVLAN_MODE_UNTAG_AND_PRITAG);
-
-		priv->ports[port].pvid = vlan->vid;
-	}
+	if (vlan->flags & BRIDGE_VLAN_INFO_PVID)
+		rtl83xx_vlan_set_pvid(priv, port, vlan->vid);
+	else if (priv->ports[port].pvid == vlan->vid)
+		rtl83xx_vlan_set_pvid(priv, port, 0);
 
 	/* Get port memberships of this vlan */
 	priv->r->vlan_tables_read(vlan->vid, &info);
@@ -1472,6 +1457,8 @@ static int rtl83xx_vlan_add(struct dsa_switch *ds, int port,
 	info.tagged_ports |= BIT_ULL(port);
 	if (vlan->flags & BRIDGE_VLAN_INFO_UNTAGGED)
 		info.untagged_ports |= BIT_ULL(port);
+	else
+		info.untagged_ports &= ~BIT_ULL(port);
 
 	priv->r->vlan_set_untagged(vlan->vid, info.untagged_ports);
 	pr_debug("Untagged ports, VLAN %d: %llx\n", vlan->vid, info.untagged_ports);
@@ -1504,12 +1491,7 @@ static int rtl83xx_vlan_del(struct dsa_switch *ds, int port,
 
 	/* Reset to default if removing the current PVID */
 	if (vlan->vid == pvid) {
-		priv->r->vlan_port_pvid_set(port, PBVLAN_TYPE_INNER, 0);
-		priv->r->vlan_port_pvid_set(port, PBVLAN_TYPE_OUTER, 0);
-		priv->r->vlan_port_pvidmode_set(port, PBVLAN_TYPE_INNER,
-		                                PBVLAN_MODE_UNTAG_AND_PRITAG);
-		priv->r->vlan_port_pvidmode_set(port, PBVLAN_TYPE_OUTER,
-		                                PBVLAN_MODE_UNTAG_AND_PRITAG);
+		rtl83xx_vlan_set_pvid(priv, port, 0);
 	}
 	/* Get port memberships of this vlan */
 	priv->r->vlan_tables_read(vlan->vid, &info);
@@ -1642,7 +1624,7 @@ static int rtl83xx_port_fdb_add(struct dsa_switch *ds, int port,
 	}
 
 	/* Hash buckets full, try CAM */
-	rtl83xx_find_l2_cam_entry(priv, seed, false, &e);
+	idx = rtl83xx_find_l2_cam_entry(priv, seed, false, &e);
 
 	if (idx >= 0) {
 		rtl83xx_setup_l2_uc_entry(&e, port, vid, mac);
@@ -1680,7 +1662,7 @@ static int rtl83xx_port_fdb_del(struct dsa_switch *ds, int port,
 	}
 
 	/* Check CAM for spillover from hash buckets */
-	rtl83xx_find_l2_cam_entry(priv, seed, true, &e);
+	idx = rtl83xx_find_l2_cam_entry(priv, seed, true, &e);
 
 	if (idx >= 0) {
 		e.valid = false;
@@ -1776,7 +1758,7 @@ static int rtl83xx_port_mdb_add(struct dsa_switch *ds, int port,
 	}
 
 	/* Hash buckets full, try CAM */
-	rtl83xx_find_l2_cam_entry(priv, seed, false, &e);
+	idx = rtl83xx_find_l2_cam_entry(priv, seed, false, &e);
 
 	if (idx >= 0) {
 		if (e.valid) {
@@ -1839,7 +1821,7 @@ int rtl83xx_port_mdb_del(struct dsa_switch *ds, int port,
 	}
 
 	/* Check CAM for spillover from hash buckets */
-	rtl83xx_find_l2_cam_entry(priv, seed, true, &e);
+	idx = rtl83xx_find_l2_cam_entry(priv, seed, true, &e);
 
 	if (idx >= 0) {
 		portmask = rtl83xx_mc_group_del_port(priv, e.mc_portmask_index, port);
@@ -2013,8 +1995,6 @@ static bool rtl83xx_lag_can_offload(struct dsa_switch *ds,
 
 static int rtl83xx_port_lag_change(struct dsa_switch *ds, int port)
 {
-	struct rtl838x_switch_priv *priv = ds->priv;
-
 	pr_debug("%s: %d\n", __func__, port);
 	/* Nothing to be done... */
 
