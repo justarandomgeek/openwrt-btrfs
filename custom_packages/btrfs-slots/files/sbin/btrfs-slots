@@ -19,6 +19,8 @@ export NEED_ID=0
 export DEF_ID=`date +%Y%m%dT%H%M`
 export INSTALL=0
 export REBOOT=0
+export SET_DEFAULT=0
+export SET_NEXT=0
 export STATUS=0
 export HELP=0
 
@@ -27,8 +29,9 @@ while [ -n "$1" ]; do
     case "$1" in
         --install) export INSTALL=1 ROOTFS="$2"; shift;;
         --id) export ID="$2"; shift;;
-        -r|--reboot) export REBOOT=1 NEED_ID=1;;
+        -r|--reboot) export SET_NEXT=1 REBOOT=1 NEED_ID=1;;
         -d|--set-default) export SET_DEFAULT=1 NEED_ID=1;;
+        -n|--set-next) export SET_NEXT=1 NEED_ID=1;;
         -s|--status) export STATUS=1;;
         -h|--help) export HELP=1;;
         *)
@@ -50,6 +53,7 @@ cat <<EOF
     --id <tag>                  slot id, defaults to a date/time stamp for install
     --reboot                    reboot to newly installed slot or slot specified by --id
     --set-default               set selected slot to become default after a successful boot
+    --set-next                  set selected slot to be used on next boot
     --status                    report currently loaded and default slots
     --help                      print this message
 EOF
@@ -118,8 +122,11 @@ if [ $SET_DEFAULT -gt 0 ]; then
     touch /mnt/rootfs/@openwrt.$ID/set_default
 fi
 
-if [ $REBOOT -gt 0 ];  then
+if [ $SET_NEXT -gt 0 ];  then
     grub-editenv /efi/EFI/openwrt/grubenv set next_slot="$ID"
+fi
+
+if [ $REBOOT -gt 0 ];  then
     reboot
     exit 0
 fi
