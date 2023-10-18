@@ -1,63 +1,125 @@
 #!/bin/sh
 
-#TODO:
-#  --install rootfs.tgz
-#  --id tag
-#  --reboot
-#  --set-default
-#  --status
-#  --list 
-#  --prune
-#
-# slots in subvols @openwrt.tag
-# and @openwrt.tag-factory
-# default slot is symlink @openwrt -> @openwrt.tag
+# efi partition mounted as /efi
+# rootfs mounted as /mnt/rootfs, and active subvol as /
+# rootfs slots are kept in subvols @openwrt.tag, as well as a read-only @openwrt.tag.factory from the initial install
+# default slot is a symlink @openwrt -> @openwrt.tag
 # grubenv next_slot=tag for auto one-shot boot
 # @slot/set_default flag file to indicate a slot should become default once succesfully booted
 # grubenv slots=tag tag tag tag...
-# limit to 10 slots listed to keep from filling grubenv (1024b total)
 
-# assumes /mnt/rootfs and /efi are already mounted
+#TODO:
+# old slot cleanup?
+# --from-slot to copy an existing slot (or slot.factory)
+# --factory to skip copying settings to new slot
 
-function install() {
-    # $1=path to new slot rootfs.tar.gz
-    id=`date +%Y%m%dT%H%M`
-    btrfs subvolume create /mnt/rootfs/@openwrt.$id
-    tar -xzf $1 -C /mnt/rootfs/@openwrt.$id
-    btrfs subvolume snapshot -r /mnt/rootfs/@openwrt.$id /mnt/rootfs/@openwrt.$id.factory
-    # copy preserved files
-    #TODO: sysupgrade unpack by 80_mount_root would also keep any new lines from /etc/passwd /etc/group /etc/shadow
+
+# initialize defaults
+export NEED_ID=0
+export DEF_ID=`date +%Y%m%dT%H%M`
+export INSTALL=0
+export REBOOT=0
+export STATUS=0
+export HELP=0
+
+# parse options
+while [ -n "$1" ]; do
+    case "$1" in
+        --install) export INSTALL=1 ROOTFS="$2"; shift;;
+        --id) export ID="$2"; shift;;
+        -r|--reboot) export REBOOT=1 NEED_ID=1;;
+        -d|--set-default) export SET_DEFAULT=1 NEED_ID=1;;
+        -s|--status) export STATUS=1;;
+        -h|--help) export HELP=1;;
+        *)
+            echo "Invalid option: $1" >&2
+            exit 1
+        ;;
+    esac
+    shift;
+done
+
+[ $INSTALL -gt 0 -a -z "$ID" ] && {
+    export ID="$DEF_ID"
+}
+
+
+[ -z "$ROOTFS" -a $INSTALL -gt 0 -o -z "$ID" -a $NEED_ID -gt 0 -o $HELP -gt 0 ] && {
+cat <<EOF
+    --install <rootfs.tar.gz>   new rootfs.tar.gz to install
+    --id <tag>                  slot id, defaults to a date/time stamp for install
+    --reboot                    reboot to newly installed slot or slot specified by --id
+    --set-default               set selected slot to become default after a successful boot
+    --status                    report currently loaded and default slots
+    --help                      print this message
+EOF
+exit 1
+}
+
+export CURRENT=`findmnt --mountpoint / -o FSROOT -n`
+CURRENT=${CURRENT#/}
+export DEFAULT=`readlink /mnt/rootfs/@openwrt`
+export SLOTS=`grub-editenv /efi/EFI/openwrt/grubenv list | grep ^slots= | cut -d"=" -f2`
+export NEXT_SLOT=`grub-editenv /efi/EFI/openwrt/grubenv list | grep ^next_slot= | cut -d"=" -f2`
+
+if [ $STATUS -gt 0 ];  then
+    echo "Currently booted from $CURRENT"
+    echo "Default boot is $DEFAULT"
+
+    if [ -n "$NEXT_SLOT" ]; then
+        if [ -e /mnt/rootfs/@openwrt.$NEXT_SLOT/set_default ]; then
+            echo "Next boot from $NEXT_SLOT, and set default if successful"
+        else
+            echo "Next boot from $NEXT_SLOT"
+        fi
+    fi
+
+    echo "Available slots: $SLOTS"
+
+    if [ "$CURRENT" = "$DEFAULT" ]; then
+        exit 0
+    else
+        exit 1
+    fi
+fi
+
+
+if [ $INSTALL -gt 0 ];  then
+    # create a new subvol, unpack into it, and capture its factory state
+    btrfs subvolume create /mnt/rootfs/@openwrt.$ID
+    tar -xzf $ROOTFS -C /mnt/rootfs/@openwrt.$ID
+    btrfs subvolume snapshot -r /mnt/rootfs/@openwrt.$ID /mnt/rootfs/@openwrt.$ID.factory
+
+    # copy preserved files, and merge new lines from /etc/passwd /etc/group /etc/shadow (see 80_mount_root, which would do this for sysupgrade)
     for f in `sysupgrade -l`; do
-        mkdir -p /mnt/rootfs/@openwrt.$id/`dirname $f`
-        cp -P /mnt/rootfs/@openwrt/$f /mnt/rootfs/@openwrt.$id/$f
+        mkdir -p /mnt/rootfs/@openwrt.$ID/`dirname $f`
+        cp -P /mnt/rootfs/@openwrt/$f /mnt/rootfs/@openwrt.$ID/$f
     done
-    local oldslots=`grub-editenv /efi/EFI/openwrt/grubenv list | grep ^slots= | cut -d"=" -f2 | cut -d" " -f1-9`
-    grub-editenv /efi/EFI/openwrt/grubenv set slots="$id $oldslots"
-}
+    missing_lines() { 
+        local file1 file2 line
+        file1="$1"
+        file2="$2"
+        oIFS="$IFS"
+        IFS=":"
+        while read line; do
+            set -- $line
+            grep -q "^$1:" "$file2" || echo "$*"
+        done < "$file1"
+        IFS="$oIFS"
+    }
+    missing_lines /mnt/rootfs/@openwrt.$ID.factory/etc/passwd /mnt/rootfs/@openwrt.$ID/etc/passwd >> /mnt/rootfs/@openwrt.$ID/etc/passwd
+    missing_lines /mnt/rootfs/@openwrt.$ID.factory/etc/group /mnt/rootfs/@openwrt.$ID/etc/group >> /mnt/rootfs/@openwrt.$ID/etc/group
+    missing_lines /mnt/rootfs/@openwrt.$ID.factory/etc/shadow /mnt/rootfs/@openwrt.$ID/etc/shadow >> /mnt/rootfs/@openwrt.$ID/etc/shadow
 
-function reboot() {
-    # $1=id
-    grub-editenv /efi/EFI/openwrt/grubenv set next_slot="$1"
-    [ $reboot_set_default ] && touch /mnt/rootfs/@openwrt.$1/set_default
+    grub-editenv /efi/EFI/openwrt/grubenv set slots="$ID $SLOTS"
+fi
+
+if [ $SET_DEFAULT -gt 0 ]; then
+    touch /mnt/rootfs/@openwrt.$ID/set_default
+fi
+
+if [ $REBOOT -gt 0 ];  then
+    grub-editenv /efi/EFI/openwrt/grubenv set next_slot="$ID"
     reboot
-}
-
-function status() {
-    local current=`findmnt --mountpoint / -o FSROOT -n`
-    local default=`readlink /mnt/rootfs/@openwrt`
-    #TODO: check grubenv exists
-    #TODO: show grubenv next_slot if set
-    #TODO: check grubenv slots not empty
-
-    #return 
-    # 0 - all ok
-    # 1 - current != default
-    # 2 - grubenv missing
-    # 4 - grubenv no slots
-}
-
-function set_default() {
-    local current=`findmnt --mountpoint / -o FSROOT -n`
-    ln -sf $current /mnt/rootfs/@openwrt
-    rm /set_default
-}
+    exit 0
+fi

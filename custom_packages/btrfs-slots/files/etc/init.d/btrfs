@@ -33,17 +33,13 @@ boot() {
         i=`expr $i + 1`
     done
 
-    local CURRENT=`findmnt --mountpoint / -o FSROOT -n`
-    echo "btrfs_slots: booted from $CURRENT" > /dev/kmsg
-    if [ "$CURRENT" = "/@upgrade" ]; then
-        local PREVIOUS=`date +%Y%m%dT%H%M`
-        local PREV_LIST=`grub-editenv /efi/EFI/openwrt/grubenv list | grep ^previous_entries= | cut -d"=" -f2 | cut -d" " -f1-4`
-        echo "btrfs_slots: moving @openwrt to @previous.$PREVIOUS, @upgrade to @openwrt" > /dev/kmsg
-        mv /mnt/rootfs/@openwrt /mnt/rootfs/@previous.$PREVIOUS
-        mv /mnt/rootfs/@upgrade /mnt/rootfs/@openwrt
-        grub-editenv /efi/EFI/openwrt/grubenv set previous_entries="$PREVIOUS $PREV_LIST"
-        sync
-        echo "btrfs_slots: now running from /@openwrt" > /dev/kmsg
+    local current=`findmnt --mountpoint / -o FSROOT -n`
+    current=${current#/}
+    echo "btrfs_slots: booted from $current" > /dev/kmsg
+    if [ -e "/set_default" ]; then
+        ln -sfT $current /mnt/rootfs/@openwrt
+        rm /set_default
+        echo "btrfs_slots: $current now set as default boot" > /dev/kmsg
     fi
 }
 
