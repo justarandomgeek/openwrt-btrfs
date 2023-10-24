@@ -51,11 +51,11 @@ done
 cat <<EOF
     --install <rootfs.tar.gz>   new rootfs.tar.gz to install
     --id <tag>                  slot id, defaults to a date/time stamp for install
-    --reboot                    reboot to newly installed slot or slot specified by --id
-    --set-default               set selected slot to become default after a successful boot
-    --set-next                  set selected slot to be used on next boot
-    --status                    report currently loaded and default slots
-    --help                      print this message
+    -r, --reboot                    reboot to newly installed slot or slot specified by --id
+    -d, --set-default               set selected slot to become default after a successful boot
+    -n, --set-next                  set selected slot to be used on next boot
+    -s, --status                    report currently loaded and default slots
+    -h, --help                      print this message
 EOF
 exit 1
 }
