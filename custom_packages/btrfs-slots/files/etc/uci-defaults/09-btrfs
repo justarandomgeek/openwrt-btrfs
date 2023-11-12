@@ -1,9 +1,0 @@
-[ -f /etc/config/btrfs ] && exit 0
-
-uci -q batch <<-EOF >/dev/null
-    add btrfs subvol
-    set btrfs.@subvol[-1].target=/mnt/rootfs
-    set btrfs.@subvol[-1].label=rootfs
-    set btrfs.@subvol[-1].subvol=/
-    commit btrfs
-EOF

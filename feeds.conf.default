@@ -6,4 +6,4 @@ src-git telephony https://git.openwrt.org/feed/telephony.git
 #src-git targets https://github.com/openwrt/targets.git
 #src-git oldpackages http://git.openwrt.org/packages.git
 #src-link custom /usr/src/openwrt/custom-feed
-src-link custom /srv/dev-disk-by-uuid-13461f6c-3ae5-419f-b1f8-8cccbc655013/homes/justarandomgeek/openwrt/custom_packages
+src-git custom https://github.com/justarandomgeek/openwrt-packages.git
