@@ -242,7 +242,7 @@ define Device/alfa-network_quad-e4g
   IMAGE_SIZE := 16064k
   DEVICE_VENDOR := ALFA Network
   DEVICE_MODEL := Quad-E4G
-  DEVICE_PACKAGES := kmod-ata-ahci kmod-sdhci-mt7620 kmod-usb3 \
+  DEVICE_PACKAGES := kmod-ata-ahci kmod-mmc-mtk kmod-usb3 \
 	-wpad-basic-mbedtls
   SUPPORTED_DEVICES += quad-e4g
 endef
@@ -300,7 +300,7 @@ define Device/asiarf_ap7621-001
   IMAGE_SIZE := 16000k
   DEVICE_VENDOR := AsiaRF
   DEVICE_MODEL := AP7621-001
-  DEVICE_PACKAGES := kmod-sdhci-mt7620 kmod-mt76x2 kmod-usb3 \
+  DEVICE_PACKAGES := kmod-mmc-mtk kmod-mt76x2 kmod-usb3 \
 	-wpad-basic-mbedtls -uboot-envtools
 endef
 TARGET_DEVICES += asiarf_ap7621-001
@@ -311,7 +311,7 @@ define Device/asiarf_ap7621-nv1
   IMAGE_SIZE := 16000k
   DEVICE_VENDOR := AsiaRF
   DEVICE_MODEL := AP7621-NV1
-  DEVICE_PACKAGES := kmod-sdhci-mt7620 kmod-mt76x2 kmod-usb3 \
+  DEVICE_PACKAGES := kmod-mmc-mtk kmod-mt76x2 kmod-usb3 \
 	-wpad-basic-mbedtls -uboot-envtools
 endef
 TARGET_DEVICES += asiarf_ap7621-nv1
@@ -604,7 +604,7 @@ define Device/comfast_cf-e390ax
   $(Device/dsa-migration)
   $(Device/uimage-lzma-loader)
   IMAGE_SIZE := 15808k
-  DEVICE_VENDOR := ComFast
+  DEVICE_VENDOR := COMFAST
   DEVICE_MODEL := CF-E390AX
   DEVICE_PACKAGES := kmod-mt7915-firmware -uboot-envtools
   IMAGES += factory.bin
@@ -618,7 +618,7 @@ define Device/comfast_cf-ew72-v2
     $(Device/dsa-migration)
     $(Device/uimage-lzma-loader)
     IMAGE_SIZE := 15808k
-    DEVICE_VENDOR := ComFast
+    DEVICE_VENDOR := COMFAST
     DEVICE_MODEL := CF-EW72 V2
     DEVICE_PACKAGES := kmod-mt7603 kmod-mt7615e kmod-mt7663-firmware-ap \
         -uboot-envtools
@@ -961,7 +961,7 @@ define Device/dual-q_h721
   IMAGE_SIZE := 16064k
   DEVICE_VENDOR := Dual-Q
   DEVICE_MODEL := H721
-  DEVICE_PACKAGES := kmod-ata-ahci kmod-sdhci-mt7620 kmod-usb3 \
+  DEVICE_PACKAGES := kmod-ata-ahci kmod-mmc-mtk kmod-usb3 \
 	-wpad-basic-mbedtls -uboot-envtools
 endef
 TARGET_DEVICES += dual-q_h721
@@ -982,7 +982,7 @@ define Device/d-team_pbr-m1
   IMAGE_SIZE := 32448k
   DEVICE_VENDOR := PandoraBox
   DEVICE_MODEL := PBR-M1
-  DEVICE_PACKAGES := kmod-ata-ahci kmod-mt7603 kmod-mt76x2 kmod-sdhci-mt7620 \
+  DEVICE_PACKAGES := kmod-ata-ahci kmod-mt7603 kmod-mt76x2 kmod-mmc-mtk \
 	kmod-usb3 kmod-usb-ledtrig-usbport -uboot-envtools
   SUPPORTED_DEVICES += pbr-m1
 endef
@@ -1244,7 +1244,7 @@ define Device/gnubee_gb-pc1
   $(Device/uimage-lzma-loader)
   DEVICE_VENDOR := GnuBee
   DEVICE_MODEL := GB-PC1
-  DEVICE_PACKAGES := kmod-ata-ahci kmod-usb3 kmod-sdhci-mt7620 \
+  DEVICE_PACKAGES := kmod-ata-ahci kmod-usb3 kmod-mmc-mtk \
 	-wpad-basic-mbedtls -uboot-envtools
   IMAGE_SIZE := 32448k
 endef
@@ -1255,7 +1255,7 @@ define Device/gnubee_gb-pc2
   $(Device/uimage-lzma-loader)
   DEVICE_VENDOR := GnuBee
   DEVICE_MODEL := GB-PC2
-  DEVICE_PACKAGES := kmod-ata-ahci kmod-usb3 kmod-sdhci-mt7620 \
+  DEVICE_PACKAGES := kmod-ata-ahci kmod-usb3 kmod-mmc-mtk \
 	-wpad-basic-mbedtls -uboot-envtools
   IMAGE_SIZE := 32448k
 endef
@@ -1370,7 +1370,7 @@ define Device/huasifei_ws1208v2
   IMAGE_SIZE := 16064k
   DEVICE_VENDOR := Huasifei
   DEVICE_MODEL := WS1208V2
-  DEVICE_PACKAGES := kmod-ata-ahci kmod-mt7603 kmod-mt76x2 kmod-sdhci-mt7620 \
+  DEVICE_PACKAGES := kmod-ata-ahci kmod-mt7603 kmod-mt76x2 kmod-mmc-mtk \
 	kmod-usb3 kmod-usb-net-cdc-mbim kmod-usb-net-qmi-wwan \
 	kmod-usb-serial-option -uboot-envtools
 endef
@@ -1632,7 +1632,7 @@ define Device/jdcloud_re-cp-02
   IMAGE_SIZE := 16000k
   DEVICE_VENDOR := JD-Cloud
   DEVICE_MODEL := RE-CP-02
-  DEVICE_PACKAGES := kmod-mt7915-firmware kmod-sdhci-mt7620
+  DEVICE_PACKAGES := kmod-mt7915-firmware kmod-mmc-mtk
 endef
 TARGET_DEVICES += jdcloud_re-cp-02
 
@@ -1650,13 +1650,26 @@ define Device/keenetic_kn-3010
 endef
 TARGET_DEVICES += keenetic_kn-3010
 
+define Device/keenetic_kn-3510
+  $(Device/nand)
+  $(Device/uimage-lzma-loader)
+  IMAGE_SIZE := 121088k
+  DEVICE_VENDOR := Keenetic
+  DEVICE_MODEL := KN-3510
+  DEVICE_PACKAGES := kmod-mt7915-firmware -uboot-envtools
+  IMAGES += factory.bin
+  IMAGE/factory.bin := append-kernel | pad-to $$(KERNEL_SIZE) | append-ubi | \
+	check-size | zyimage -d 0x803510 -v "KN-3510"
+endef
+TARGET_DEVICES += keenetic_kn-3510
+
 define Device/lenovo_newifi-d1
   $(Device/dsa-migration)
   $(Device/uimage-lzma-loader)
   IMAGE_SIZE := 32448k
   DEVICE_VENDOR := Lenovo
   DEVICE_MODEL := Newifi D1
-  DEVICE_PACKAGES := kmod-mt7603 kmod-mt76x2 kmod-usb3 kmod-sdhci-mt7620 \
+  DEVICE_PACKAGES := kmod-mt7603 kmod-mt76x2 kmod-usb3 kmod-mmc-mtk \
 	kmod-usb-ledtrig-usbport -uboot-envtools
   SUPPORTED_DEVICES += newifi-d1
 endef
@@ -1770,7 +1783,7 @@ define Device/mediatek_ap-mt7621a-v60
   IMAGE_SIZE := 7872k
   DEVICE_VENDOR := Mediatek
   DEVICE_MODEL := AP-MT7621A-V60 EVB
-  DEVICE_PACKAGES := kmod-usb3 kmod-sdhci-mt7620 kmod-sound-mt7620 \
+  DEVICE_PACKAGES := kmod-usb3 kmod-mmc-mtk kmod-sound-mt7620 \
 	-wpad-basic-mbedtls -uboot-envtools
 endef
 TARGET_DEVICES += mediatek_ap-mt7621a-v60
@@ -1865,7 +1878,7 @@ define Device/mqmaker_witi
   IMAGE_SIZE := 16064k
   DEVICE_VENDOR := MQmaker
   DEVICE_MODEL := WiTi
-  DEVICE_PACKAGES := kmod-ata-ahci kmod-mt76x2 kmod-sdhci-mt7620 kmod-usb3 \
+  DEVICE_PACKAGES := kmod-ata-ahci kmod-mt76x2 kmod-mmc-mtk kmod-usb3 \
 	kmod-usb-ledtrig-usbport -uboot-envtools
   SUPPORTED_DEVICES += witi mqmaker,witi-256m mqmaker,witi-512m
 endef
@@ -1878,7 +1891,7 @@ define Device/mtc_wr1201
   DEVICE_VENDOR := MTC
   DEVICE_MODEL := Wireless Router WR1201
   KERNEL_INITRAMFS := $(KERNEL_DTB) | uImage lzma -n 'WR1201_8_128'
-  DEVICE_PACKAGES := kmod-sdhci-mt7620 kmod-mt76x2 kmod-usb3 \
+  DEVICE_PACKAGES := kmod-mmc-mtk kmod-mt76x2 kmod-usb3 \
 	kmod-usb-ledtrig-usbport -uboot-envtools
 endef
 TARGET_DEVICES += mtc_wr1201
@@ -2113,6 +2126,24 @@ define Device/netgear_wax202
 endef
 TARGET_DEVICES += netgear_wax202
 
+define Device/netgear_wax214v2
+  $(Device/nand)
+  DEVICE_VENDOR := NETGEAR
+  DEVICE_MODEL := WAX214v2
+  DEVICE_PACKAGES := kmod-mt7915-firmware
+  NETGEAR_ENC_MODEL := WAX214v2
+  NETGEAR_ENC_REGION := US
+  IMAGE_SIZE := 38912k
+  KERNEL_LOADADDR := 0x82000000
+  KERNEL := kernel-bin | relocate-kernel 0x80001000 | lzma | \
+	fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb | \
+	append-squashfs4-fakeroot
+  IMAGES += factory.img
+  IMAGE/factory.img := append-kernel | pad-to $$(KERNEL_SIZE) | \
+	append-ubi | check-size | netgear-encrypted-factory
+endef
+TARGET_DEVICES += netgear_wax214v2
+
 define Device/netgear_wndr3700-v5
   $(Device/dsa-migration)
   $(Device/netgear_sercomm_nor)
@@ -2154,7 +2185,7 @@ define Device/openfi_5pro
   DEVICE_VENDOR := OpenFi
   DEVICE_MODEL := 5Pro 
   DEVICE_PACKAGES := kmod-mt7603 kmod-mt7615e kmod-mt7663-firmware-ap kmod-usb3 \
-	kmod-sdhci-mt7620
+	kmod-mmc-mtk
 endef
 TARGET_DEVICES += openfi_5pro
 
@@ -2656,7 +2687,7 @@ TARGET_DEVICES += ubnt_edgerouter-x-sfp
 define Device/ubnt_unifi-6-lite
   $(Device/dsa-migration)
   DEVICE_VENDOR := Ubiquiti
-  DEVICE_MODEL := UniFi 6 Lite
+  DEVICE_MODEL := UniFi U6 Lite
   DEVICE_DTS_CONFIG := config@1
   DEVICE_DTS_LOADADDR := 0x87000000
   DEVICE_PACKAGES += kmod-mt7603 kmod-mt7915-firmware -uboot-envtools
@@ -2717,7 +2748,7 @@ define Device/unielec_u7621-06-16m
   DEVICE_VENDOR := UniElec
   DEVICE_MODEL := U7621-06
   DEVICE_VARIANT := 16M
-  DEVICE_PACKAGES := kmod-ata-ahci kmod-sdhci-mt7620 kmod-usb3 \
+  DEVICE_PACKAGES := kmod-ata-ahci kmod-mmc-mtk kmod-usb3 \
 	-wpad-basic-mbedtls -uboot-envtools
   SUPPORTED_DEVICES += u7621-06-256M-16M unielec,u7621-06-256m-16m
 endef
@@ -2730,7 +2761,7 @@ define Device/unielec_u7621-06-32m
   DEVICE_VENDOR := UniElec
   DEVICE_MODEL := U7621-06
   DEVICE_VARIANT := 32M
-  DEVICE_PACKAGES := kmod-ata-ahci kmod-sdhci-mt7620 kmod-usb3 \
+  DEVICE_PACKAGES := kmod-ata-ahci kmod-mmc-mtk kmod-usb3 \
 	-wpad-basic-mbedtls -uboot-envtools
   SUPPORTED_DEVICES += unielec,u7621-06-32m
 endef
@@ -2743,7 +2774,7 @@ define Device/unielec_u7621-06-64m
   DEVICE_VENDOR := UniElec
   DEVICE_MODEL := U7621-06
   DEVICE_VARIANT := 64M
-  DEVICE_PACKAGES := kmod-ata-ahci kmod-sdhci-mt7620 kmod-usb3 \
+  DEVICE_PACKAGES := kmod-ata-ahci kmod-mmc-mtk kmod-usb3 \
 	-wpad-basic-mbedtls -uboot-envtools
   SUPPORTED_DEVICES += unielec,u7621-06-512m-64m
 endef
@@ -2866,6 +2897,17 @@ define Device/winstars_ws-wn583a6
   DEVICE_PACKAGES := kmod-mt7603 kmod-mt7615-firmware -uboot-envtools
 endef
 TARGET_DEVICES += winstars_ws-wn583a6
+
+define Device/wodesys_wd-r1802u
+  $(Device/dsa-migration)
+  $(Device/uimage-lzma-loader)
+  IMAGE_SIZE := 15808k
+  DEVICE_VENDOR := Wodesys
+  DEVICE_MODEL := WD-R1802U
+  DEVICE_PACKAGES := kmod-mt7915-firmware -uboot-envtools
+  SUPPORTED_DEVICES += mt7621-rfb-ax-nor
+endef
+TARGET_DEVICES += wodesys_wd-r1802u
 
 define Device/xiaomi_nand_separate
   $(Device/nand)
@@ -3003,7 +3045,7 @@ define Device/xzwifi_creativebox-v1
   IMAGE_SIZE := 32448k
   DEVICE_VENDOR := CreativeBox
   DEVICE_MODEL := v1
-  DEVICE_PACKAGES := kmod-ata-ahci kmod-mt7603 kmod-mt76x2 kmod-sdhci-mt7620 \
+  DEVICE_PACKAGES := kmod-ata-ahci kmod-mt7603 kmod-mt76x2 kmod-mmc-mtk \
 	kmod-usb3 -wpad-basic-mbedtls -uboot-envtools
 endef
 TARGET_DEVICES += xzwifi_creativebox-v1
@@ -3092,7 +3134,7 @@ define Device/zbtlink_zbt-we1326
   DEVICE_MODEL := ZBT-WE1326
   DEVICE_ALT0_VENDOR := Wiflyer
   DEVICE_ALT0_MODEL := WF3526-P
-  DEVICE_PACKAGES := kmod-mt7603 kmod-mt76x2 kmod-usb3 kmod-sdhci-mt7620 \
+  DEVICE_PACKAGES := kmod-mt7603 kmod-mt76x2 kmod-usb3 kmod-mmc-mtk \
 	-uboot-envtools
   SUPPORTED_DEVICES += zbt-we1326
 endef
@@ -3104,7 +3146,7 @@ define Device/zbtlink_zbt-we3526
   IMAGE_SIZE := 16064k
   DEVICE_VENDOR := Zbtlink
   DEVICE_MODEL := ZBT-WE3526
-  DEVICE_PACKAGES := kmod-sdhci-mt7620 kmod-mt7603 kmod-mt76x2 kmod-usb3 \
+  DEVICE_PACKAGES := kmod-mmc-mtk kmod-mt7603 kmod-mt76x2 kmod-usb3 \
 	kmod-usb-ledtrig-usbport -uboot-envtools
 endef
 TARGET_DEVICES += zbtlink_zbt-we3526
@@ -3116,7 +3158,7 @@ define Device/zbtlink_zbt-wg1602-16m
   DEVICE_VENDOR := Zbtlink
   DEVICE_MODEL := ZBT-WG1602
   DEVICE_VARIANT := 16M
-  DEVICE_PACKAGES := kmod-sdhci-mt7620 kmod-mt7603 kmod-mt76x2 kmod-usb3 \
+  DEVICE_PACKAGES := kmod-mmc-mtk kmod-mt7603 kmod-mt76x2 kmod-usb3 \
 	kmod-usb-ledtrig-usbport -uboot-envtools
 endef
 TARGET_DEVICES += zbtlink_zbt-wg1602-16m
@@ -3128,7 +3170,7 @@ define Device/zbtlink_zbt-wg1602-v04-16m
   DEVICE_VENDOR := Zbtlink
   DEVICE_MODEL := ZBT-WG1602-V04
   DEVICE_VARIANT := 16M
-  DEVICE_PACKAGES := kmod-sdhci-mt7620 kmod-mt7603 kmod-mt76x2 kmod-usb3 \
+  DEVICE_PACKAGES := kmod-mmc-mtk kmod-mt7603 kmod-mt76x2 kmod-usb3 \
         kmod-usb-ledtrig-usbport -uboot-envtools
 endef
 TARGET_DEVICES += zbtlink_zbt-wg1602-v04-16m
@@ -3140,7 +3182,7 @@ define Device/zbtlink_zbt-wg1602-v04-32m
   DEVICE_VENDOR := Zbtlink
   DEVICE_MODEL := ZBT-WG1602-V04
   DEVICE_VARIANT := 32M
-  DEVICE_PACKAGES := kmod-sdhci-mt7620 kmod-mt7603 kmod-mt76x2 kmod-usb3 \
+  DEVICE_PACKAGES := kmod-mmc-mtk kmod-mt7603 kmod-mt76x2 kmod-usb3 \
         kmod-usb-ledtrig-usbport -uboot-envtools
 endef
 TARGET_DEVICES += zbtlink_zbt-wg1602-v04-32m
@@ -3152,7 +3194,7 @@ define Device/zbtlink_zbt-wg1608-16m
   DEVICE_VENDOR := Zbtlink
   DEVICE_MODEL := ZBT-WG1608
   DEVICE_VARIANT := 16M
-  DEVICE_PACKAGES := kmod-sdhci-mt7620 kmod-mt7603 kmod-mt7615e \
+  DEVICE_PACKAGES := kmod-mmc-mtk kmod-mt7603 kmod-mt7615e \
 	kmod-mt7663-firmware-ap kmod-usb3 kmod-usb-ledtrig-usbport \
 	-uboot-envtools
 endef
@@ -3165,7 +3207,7 @@ define Device/zbtlink_zbt-wg1608-32m
   DEVICE_VENDOR := Zbtlink
   DEVICE_MODEL := ZBT-WG1608
   DEVICE_VARIANT := 32M
-  DEVICE_PACKAGES := kmod-sdhci-mt7620 kmod-mt7603 kmod-mt7615e \
+  DEVICE_PACKAGES := kmod-mmc-mtk kmod-mt7603 kmod-mt7615e \
 	kmod-mt7663-firmware-ap kmod-usb3 kmod-usb-ledtrig-usbport
 endef
 TARGET_DEVICES += zbtlink_zbt-wg1608-32m
@@ -3176,7 +3218,7 @@ define Device/zbtlink_zbt-wg2626
   IMAGE_SIZE := 16064k
   DEVICE_VENDOR := Zbtlink
   DEVICE_MODEL := ZBT-WG2626
-  DEVICE_PACKAGES := kmod-ata-ahci kmod-sdhci-mt7620 kmod-mt76x2 kmod-usb3 \
+  DEVICE_PACKAGES := kmod-ata-ahci kmod-mmc-mtk kmod-mt76x2 kmod-usb3 \
 	kmod-usb-ledtrig-usbport -uboot-envtools
   SUPPORTED_DEVICES += zbt-wg2626
 endef
@@ -3189,7 +3231,7 @@ define Device/zbtlink_zbt-wg3526-16m
   DEVICE_VENDOR := Zbtlink
   DEVICE_MODEL := ZBT-WG3526
   DEVICE_VARIANT := 16M
-  DEVICE_PACKAGES := kmod-ata-ahci kmod-sdhci-mt7620 kmod-mt7603 kmod-mt76x2 \
+  DEVICE_PACKAGES := kmod-ata-ahci kmod-mmc-mtk kmod-mt7603 kmod-mt76x2 \
 	kmod-usb3 kmod-usb-ledtrig-usbport -uboot-envtools
   SUPPORTED_DEVICES += zbt-wg3526 zbt-wg3526-16M
 endef
@@ -3202,7 +3244,7 @@ define Device/zbtlink_zbt-wg3526-32m
   DEVICE_VENDOR := Zbtlink
   DEVICE_MODEL := ZBT-WG3526
   DEVICE_VARIANT := 32M
-  DEVICE_PACKAGES := kmod-ata-ahci kmod-sdhci-mt7620 kmod-mt7603 kmod-mt76x2 \
+  DEVICE_PACKAGES := kmod-ata-ahci kmod-mmc-mtk kmod-mt7603 kmod-mt76x2 \
 	kmod-usb3 kmod-usb-ledtrig-usbport -uboot-envtools
   SUPPORTED_DEVICES += ac1200pro zbt-wg3526-32M
 endef
@@ -3220,7 +3262,7 @@ TARGET_DEVICES += zio_freezio
 
 define Device/zyxel_lte3301-plus
   $(Device/nand)
-  DEVICE_VENDOR := ZyXEL
+  DEVICE_VENDOR := Zyxel
   DEVICE_MODEL := LTE3301-PLUS
   KERNEL_SIZE := 31488k
   DEVICE_PACKAGES := kmod-mt7615-firmware kmod-usb3 kmod-usb-ledtrig-usbport \
@@ -3235,7 +3277,7 @@ TARGET_DEVICES += zyxel_lte3301-plus
 
 define Device/zyxel_lte5398-m904
   $(Device/nand)
-  DEVICE_VENDOR := ZyXEL
+  DEVICE_VENDOR := Zyxel
   DEVICE_MODEL := LTE5398-M904
   KERNEL_SIZE := 31488k
   DEVICE_PACKAGES := kmod-mt7603 kmod-mt7615-firmware kmod-usb3 uqmi \
@@ -3250,7 +3292,7 @@ TARGET_DEVICES += zyxel_lte5398-m904
 
 define Device/zyxel_nr7101
   $(Device/nand)
-  DEVICE_VENDOR := ZyXEL
+  DEVICE_VENDOR := Zyxel
   DEVICE_MODEL := NR7101
   KERNEL_SIZE := 31488k
   DEVICE_PACKAGES := kmod-mt7603 kmod-usb3 kmod-usb-net-qmi-wwan kmod-usb-serial-option uqmi
@@ -3262,7 +3304,7 @@ TARGET_DEVICES += zyxel_nr7101
 
 define Device/zyxel_nwa-ax
   $(Device/nand)
-  DEVICE_VENDOR := ZyXEL
+  DEVICE_VENDOR := Zyxel
   KERNEL_SIZE := 8192k
   DEVICE_PACKAGES := kmod-mt7915-firmware zyxel-bootconfig
   KERNEL := kernel-bin | lzma | fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb
@@ -3287,7 +3329,7 @@ define Device/zyxel_wap6805
   $(Device/nand)
   $(Device/uimage-lzma-loader)
   IMAGE_SIZE := 32448k
-  DEVICE_VENDOR := ZyXEL
+  DEVICE_VENDOR := Zyxel
   DEVICE_MODEL := WAP6805
   DEVICE_PACKAGES := kmod-mt7603 kmod-mt7621-qtn-rgmii -uboot-envtools
   KERNEL := $$(KERNEL/lzma-loader) | uImage none | uimage-padhdr 160
@@ -3298,7 +3340,7 @@ define Device/zyxel_wsm20
   $(Device/nand)
   KERNEL_SIZE := 8192k
   IMAGE_SIZE := 41943040
-  DEVICE_VENDOR := ZyXEL
+  DEVICE_VENDOR := Zyxel
   DEVICE_MODEL := WSM20
   DEVICE_PACKAGES := kmod-mt7915-firmware
   KERNEL := kernel-bin | lzma | fit lzma $$(KDIR)/image-$$(firstword $$(DEVICE_DTS)).dtb | znet-header V1.00(ABZF.0)C0
