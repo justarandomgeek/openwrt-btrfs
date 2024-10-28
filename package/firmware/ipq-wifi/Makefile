@@ -6,9 +6,9 @@ PKG_RELEASE:=1
 
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL=$(PROJECT_GIT)/project/firmware/qca-wireless.git
-PKG_SOURCE_DATE:=2024-07-04
-PKG_SOURCE_VERSION:=fcdb2e74a6e4518266679292071c8f47f87b4df2
-PKG_MIRROR_HASH:=bfa2388468eb74221c7d1696089bb8ad3ca2b3b27ebff657f1962a6bbe6ccc11
+PKG_SOURCE_DATE:=2024-10-08
+PKG_SOURCE_VERSION:=dcbab62272bf5cab2ed857bc655d240970e14f2a
+PKG_MIRROR_HASH:=e53a3872abf5e35db6baaceb56e6ffa289f8dd9b6226cf8a4d5b87b541179175
 PKG_FLAGS:=nonshared
 
 include $(INCLUDE_DIR)/package.mk
@@ -51,7 +51,9 @@ ALLWIFIBOARDS:= \
 	prpl_haze \
 	qnap_301w \
 	redmi_ax6 \
+	skspruce_wia3300-20 \
 	spectrum_sax1v1k \
+	tplink_eap660hd-v1 \
 	wallys_dr40x9 \
 	xiaomi_ax3600 \
 	xiaomi_ax9000 \
@@ -176,7 +178,9 @@ $(eval $(call generate-ipq-wifi-package,netgear_wax630,Netgear WAX630))
 $(eval $(call generate-ipq-wifi-package,qnap_301w,QNAP 301w))
 $(eval $(call generate-ipq-wifi-package,prpl_haze,prpl Haze))
 $(eval $(call generate-ipq-wifi-package,redmi_ax6,Redmi AX6))
+$(eval $(call generate-ipq-wifi-package,skspruce_wia3300-20,SKSpruce WIA3300-20))
 $(eval $(call generate-ipq-wifi-package,spectrum_sax1v1k,Spectrum SAX1V1K))
+$(eval $(call generate-ipq-wifi-package,tplink_eap660hd-v1,TP-Link EAP660 HD v1))
 $(eval $(call generate-ipq-wifi-package,wallys_dr40x9,Wallys DR40X9))
 $(eval $(call generate-ipq-wifi-package,xiaomi_ax3600,Xiaomi AX3600))
 $(eval $(call generate-ipq-wifi-package,xiaomi_ax9000,Xiaomi AX9000))
