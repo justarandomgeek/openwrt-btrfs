@@ -1,0 +1,9 @@
+menu "Configuration"
+	depends on PACKAGE_grub2-efi
+
+config GRUB2_EFI_EXTRA_MODULES
+	string
+	prompt "extra modules to include"
+	default ""
+
+endmenu
